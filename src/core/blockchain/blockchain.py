@@ -24,14 +24,16 @@ class BlockchainState:
         self._coinbase_queue = dict()
 
         self.set_block_reward(BLOCK_REWARD)
+        self.state_height = 0
     
     def compute_state(self, blocks_num: int = 1):
         blocks_to_compute = self._blockchain._blocks[-blocks_num:]
         for block in blocks_to_compute:
-            self._set_block(block)
-
             if TYPE_CHECKING:
                 block = Block()
+            
+            self._set_block(block)
+            self.state_height = block.height
 
             block.coinbase_transaction.output_address
             block.coinbase_transaction.reward
@@ -82,6 +84,12 @@ class BlockchainState:
         self._backend.add_transaction(tx)
     def get_transactions(self, sort: str = "gas_price", limit: int = 0) -> list["BaseTransaction"]:
         return self._backend.get_transactions(sort, limit)
+    
+    def create_snapshot(self) -> "BlockchainState":
+        state_snapshot = copy.deepcopy(self)
+        state_snapshot._blockchain = None
+        state_snapshot._backend._last_block = None
+        return state_snapshot
 
 class Blockchain:
     def __init__(self, backend, chain_id):
