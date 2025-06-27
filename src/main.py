@@ -179,7 +179,9 @@ tx = TransferTransaction(
 tx.build()
 tx.sign(private)
 
+app.incomingMessages.put(tx)
 
+time.sleep(0.5)
 
 new_block = Block(
     block_id = None,
@@ -197,7 +199,7 @@ new_block = Block(
         reward = 10,
         output_address = b"\x12"*20
     ),
-    transactions = [tx]
+    transactions = app.blockchain.state.get_transactions()
 )
 
 while True:

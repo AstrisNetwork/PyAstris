@@ -61,7 +61,7 @@ def process_transfer_transaction(app: "App", tx: TransferTransaction, check_for_
     if check_for_block:
         return True
     else:
-        pass # Add tx to pool
+        app.blockchain.state.add_transaction(tx)
 
 def process_coinbase_transaction(app: "App", tx: CoinbaseTransaction):
     pass

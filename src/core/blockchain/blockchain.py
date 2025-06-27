@@ -80,7 +80,7 @@ class BlockchainState:
     
     def add_transaction(self, tx: "BaseTransaction"):
         self._backend.add_transaction(tx)
-    def get_transactions(self, sort: str, limit: int) -> list["BaseTransaction"]:
+    def get_transactions(self, sort: str = "gas_price", limit: int = 0) -> list["BaseTransaction"]:
         return self._backend.get_transactions(sort, limit)
 
 class Blockchain:

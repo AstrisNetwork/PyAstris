@@ -1,6 +1,8 @@
 from core.db_backend.base import BaseBackend
 from typing import TYPE_CHECKING
 
+import copy
+
 if TYPE_CHECKING:
     from core.blockchain.block import Block
     from core.blockchain.transaction import BaseTransaction, CoinbaseTransaction
@@ -45,7 +47,7 @@ class MemoryBackend(BaseBackend):
     def add_transaction(self, tx: "BaseTransaction"):
         self._transactions.append(tx)
     def get_transactions(self, sort: str = "gas_price", limit: int = 0) -> list["BaseTransaction"]:
-        tx_list = self._transactions.copy()
+        tx_list = copy.deepcopy(self._transactions)
         if sort == "gas_price":
             # Sortujemy rosnąco po gas_price — zmień reverse=True, jeśli chcesz malejąco
             tx_list.sort(key=lambda tx: tx.gas_price, reverse=True)
