@@ -1,0 +1,8 @@
+COINBASE_DELAY = 1 # Blocks
+BLOCK_REWARD = 10 # In raw
+
+MAX_GAS = 20
+
+CHAIN_ID = 2
+
+TRANSFER_GAS = 1

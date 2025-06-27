@@ -1,0 +1,20 @@
+network:
+  port: 52345
+  ipv6: false # DON'T CHANGE IT!
+  ip: 127.0.0.1
+
+db:
+  engine: memory # memory, sqlite, mysql
+
+  # if engine = sqlite
+  path: ./astris.db
+
+  # if engine = mysql/mariadb
+  host: 127.0.0.1
+  port: 3306
+  user: root
+  password: ''
+  db_name: PyAstris
+
+logging:
+  level: debug
