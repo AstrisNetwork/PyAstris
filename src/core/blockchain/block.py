@@ -20,8 +20,6 @@ class Block:
         self.raw = kwargs.get("raw")
     
     def build_raw(self, return_body = False):
-        if self.block_id:
-            block_id_raw = bytes(self.block_id)
         mmp_version = self.version.split(".")
         version_raw = int(mmp_version[0]).to_bytes(2, "big") + int(mmp_version[1]).to_bytes(2, "big") + int(mmp_version[2]).to_bytes(2, "big")
         chain_id_raw = int(self.chain_id).to_bytes(2, "big")
