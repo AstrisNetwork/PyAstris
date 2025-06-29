@@ -97,6 +97,8 @@ class Blockchain:
         self.state = BlockchainState(backend, self)
         self.chain_id = chain_id
 
+        self.id_to_height = dict()
+
     def new(self, **kwargs):
         self.version = kwargs.get("protocolVersion")
         genesis = kwargs.get("genesisBlock")
@@ -110,4 +112,11 @@ class Blockchain:
     
     def add_block(self, block: "Block"):
         self._blocks.append(block)
+        self.id_to_height[block.block_id] = block.height
         self.state.compute_state(1)
+    
+    def get_block_by_id(self, block_id: bytes) -> "Block":
+        return self.get_block_by_height(self.id_to_height[block_id])
+
+    def get_block_by_height(self, block_height: int) -> "Block":
+        return self._blocks[block_height]

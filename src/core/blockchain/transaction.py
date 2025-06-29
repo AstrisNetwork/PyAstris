@@ -44,7 +44,7 @@ class TransferTransaction(BaseTransaction):
         version_raw = int(mmp_version[0]).to_bytes(2, "big") + int(mmp_version[1]).to_bytes(2, "big") + int(mmp_version[2]).to_bytes(2, "big")
         chain_id_raw = int(self.chain_id).to_bytes(2, "big")
         timestamp_raw = int(self.timestamp).to_bytes(8, "big")
-        nonce_raw = int(self.nonce).to_bytes(8, "big")
+        nonce_raw = int(self.nonce).to_bytes(32, "big")
         gas_price_raw = int(self.gas_price).to_bytes(32, "big")
         gas_limit_raw = int(self.gas_limit).to_bytes(32, "big")
         input_public_key_raw = bytes(self.input_public_key.encode())
@@ -68,13 +68,89 @@ class TransferTransaction(BaseTransaction):
         nonce = kwargs.get("nonce")
         gas_price = kwargs.get("gas_price")
         gas_limit = kwargs.get("gas_limit")
+
         try:
             input_public_key_raw = kwargs.get("input_public_key")
             input_public_key = VerifyKey(input_public_key_raw)
         except Exception:
             raise TransactionError("Wrong Public Key format!")
+
         output_address = kwargs.get("output_address")
         amount = kwargs.get("amount")
+
+        tx = TransferTransaction(
+            version=version,
+            chain_id=chain_id,
+            timestamp=timestamp,
+            nonce=nonce,
+            gas_price=gas_price,
+            gas_limit=gas_limit,
+            input_public_key=input_public_key,
+            output_address=output_address,
+            amount=amount
+        )
+        tx.build()
+        return tx
+    
+    @staticmethod
+    def from_raw(raw: bytes) -> "TransferTransaction":
+        if len(raw) != 320:
+            raise ValueError(f"Nieprawidłowy rozmiar transakcji: {len(raw)} bajtów (oczekiwano 320)")
+
+        offset = 0
+
+        tx_id = raw[offset:offset + 32]
+        offset += 32
+
+        version_raw = raw[offset:offset + 6]
+        version = "{}.{}.{}".format(
+            int.from_bytes(version_raw[0:2], "big"),
+            int.from_bytes(version_raw[2:4], "big"),
+            int.from_bytes(version_raw[4:6], "big")
+        )
+        offset += 6
+
+        chain_id = int.from_bytes(raw[offset:offset + 2], "big")
+        offset += 2
+
+        timestamp = int.from_bytes(raw[offset:offset + 8], "big")
+        offset += 8
+
+        nonce = int.from_bytes(raw[offset:offset + 32], "big")
+        offset += 32
+
+        gas_price = int.from_bytes(raw[offset:offset + 32], "big")
+        offset += 32
+
+        gas_limit = int.from_bytes(raw[offset:offset + 32], "big")
+        offset += 32
+
+        input_public_key = raw[offset:offset + 32]
+        offset += 32
+
+        output_address = raw[offset:offset + 20]
+        offset += 20
+
+        amount = int.from_bytes(raw[offset:offset + 32], "big")
+        offset += 32
+
+        sign = raw[offset:offset + 64]
+        offset += 64
+
+        return TransferTransaction(
+            txid=tx_id,
+            version=version,
+            chain_id=chain_id,
+            timestamp=timestamp,
+            nonce=nonce,
+            gas_price=gas_price,
+            gas_limit=gas_limit,
+            input_public_key=VerifyKey(input_public_key),
+            output_address=output_address,
+            amount=amount,
+            sign=sign,
+            raw=raw
+        )
 
 class CoinbaseTransaction(BaseTransaction):
     def __init__(self, **kwargs):
@@ -98,6 +174,42 @@ class CoinbaseTransaction(BaseTransaction):
         reward_raw = int(reward).to_bytes(32, "big")
         output_address_raw = bytes(output_address)
         raw_body = version_raw + nonce_raw + reward_raw + output_address_raw
-        tx_id = hashlib.sha3_256(version_raw + nonce_raw + reward_raw + output_address_raw).digest()
+        tx_id = hashlib.sha3_256(raw_body).digest()
 
         return CoinbaseTransaction(txid = tx_id, version = version, nonce = nonce, reward = reward, output_address = output_address, raw = tx_id + raw_body)
+    
+    @staticmethod
+    def from_raw(raw: bytes) -> "CoinbaseTransaction":
+        if len(raw) != 122:
+            raise ValueError(f"Nieprawidłowy rozmiar coinbase transakcji: {len(raw)} bajtów (oczekiwano 122)")
+
+        offset = 0
+
+        txid = raw[offset:offset + 32]
+        offset += 32
+
+        version_raw = raw[offset:offset + 6]
+        version = "{}.{}.{}".format(
+            int.from_bytes(version_raw[0:2], "big"),
+            int.from_bytes(version_raw[2:4], "big"),
+            int.from_bytes(version_raw[4:6], "big")
+        )
+        offset += 6
+
+        nonce = int.from_bytes(raw[offset:offset + 32], "big")
+        offset += 32
+
+        reward = int.from_bytes(raw[offset:offset + 32], "big")
+        offset += 32
+
+        output_address = raw[offset:offset + 20]
+        offset += 20
+
+        return CoinbaseTransaction(
+            txid=txid,
+            version=version,
+            nonce=nonce,
+            reward=reward,
+            output_address=output_address,
+            raw=raw
+        )
