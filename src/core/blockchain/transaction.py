@@ -213,3 +213,149 @@ class CoinbaseTransaction(BaseTransaction):
             output_address=output_address,
             raw=raw
         )
+
+
+class ContractTransaction(BaseTransaction):
+    def __init__(self, **kwargs):
+        self.txid = kwargs.get("txid")
+        self.version = kwargs.get("version")
+        self.chain_id = kwargs.get("chain_id")
+        self.timestamp = kwargs.get("timestamp")
+        self.nonce = kwargs.get("nonce")
+        self.gas_price = kwargs.get("gas_price")
+        self.gas_limit = kwargs.get("gas_limit")
+        self.input_public_key = kwargs.get("input_public_key")
+        self.amount = kwargs.get("amount")
+        self.contract_address = kwargs.get("contract_address")
+        self.contract_args = kwargs.get("contract_args")
+        self.signature = kwargs.get("signature")
+        self.raw = kwargs.get("raw")
+    
+    def verify_signature(self) -> bool:
+        message = self.raw[:-64]
+        try:
+            self.input_public_key.verify(message, self.signature)
+            return True
+        except BadSignatureError:
+            return False
+
+    def calculate_gas(self):
+        return 0 # Logika liczenia gasu
+
+    def build(self):
+        mmp_version = self.version.split(".")
+        version_raw = int(mmp_version[0]).to_bytes(2, "big") + int(mmp_version[1]).to_bytes(2, "big") + int(mmp_version[2]).to_bytes(2, "big")
+        chain_id_raw = int(self.chain_id).to_bytes(2, "big")
+        timestamp_raw = int(self.timestamp).to_bytes(8, "big")
+        nonce_raw = int(self.nonce).to_bytes(32, "big")
+        gas_price_raw = int(self.gas_price).to_bytes(32, "big")
+        gas_limit_raw = int(self.gas_limit).to_bytes(32, "big")
+        input_public_key_raw = bytes(self.input_public_key.encode())
+        contract_address_raw = bytes(self.contract_address)
+        contract_args_raw = bytes(self.contract_args)
+        amount_raw = int(self.amount).to_bytes(32, "big")
+
+        raw_body = version_raw+chain_id_raw+timestamp_raw+nonce_raw+gas_price_raw+gas_limit_raw+input_public_key_raw+amount_raw+contract_address_raw+contract_args_raw
+        self.txid = hashlib.sha3_256(raw_body).digest()
+        self.raw = raw_body + b"\x00"*64
+    
+    def sign(self, private: SigningKey):
+        signature = private.sign(self.raw[:-64]).signature
+        self.signature = signature
+        self.raw = self.raw[:-64] + signature
+    
+    @staticmethod
+    def new(**kwargs) -> "TransferTransaction":
+        version = kwargs.get("version")
+        chain_id = kwargs.get("chain_id")
+        timestamp = kwargs.get("timestamp")
+        nonce = kwargs.get("nonce")
+        gas_price = kwargs.get("gas_price")
+        gas_limit = kwargs.get("gas_limit")
+
+        try:
+            input_public_key_raw = kwargs.get("input_public_key")
+            input_public_key = VerifyKey(input_public_key_raw)
+        except Exception:
+            raise TransactionError("Wrong Public Key format!")
+
+        contract_address = kwargs.get("contract_address")
+        contract_args = kwargs.get("contract_args")
+        amount = kwargs.get("amount")
+
+        tx = TransferTransaction(
+            version=version,
+            chain_id=chain_id,
+            timestamp=timestamp,
+            nonce=nonce,
+            gas_price=gas_price,
+            gas_limit=gas_limit,
+            input_public_key=input_public_key,
+            contract_address=contract_address,
+            contract_args=contract_args,
+            amount=amount
+        )
+        tx.build()
+        return tx
+    
+    @staticmethod
+    def from_raw(raw: bytes) -> "TransferTransaction":
+        if len(raw) != 320:
+            raise ValueError(f"Nieprawidłowy rozmiar transakcji: {len(raw)} bajtów (oczekiwano 320)")
+
+        offset = 0
+
+        tx_id = raw[offset:offset + 32]
+        offset += 32
+
+        version_raw = raw[offset:offset + 6]
+        version = "{}.{}.{}".format(
+            int.from_bytes(version_raw[0:2], "big"),
+            int.from_bytes(version_raw[2:4], "big"),
+            int.from_bytes(version_raw[4:6], "big")
+        )
+        offset += 6
+
+        chain_id = int.from_bytes(raw[offset:offset + 2], "big")
+        offset += 2
+
+        timestamp = int.from_bytes(raw[offset:offset + 8], "big")
+        offset += 8
+
+        nonce = int.from_bytes(raw[offset:offset + 32], "big")
+        offset += 32
+
+        gas_price = int.from_bytes(raw[offset:offset + 32], "big")
+        offset += 32
+
+        gas_limit = int.from_bytes(raw[offset:offset + 32], "big")
+        offset += 32
+
+        input_public_key = raw[offset:offset + 32]
+        offset += 32
+
+        amount = int.from_bytes(raw[offset:offset + 32], "big")
+        offset += 32
+
+        contract_address = raw[offset:offset + 20]
+        offset += 20
+
+        contract_args = raw[offset:]
+
+        sign = raw[:-64]
+
+        return TransferTransaction(
+            txid=tx_id,
+            version=version,
+            chain_id=chain_id,
+            timestamp=timestamp,
+            nonce=nonce,
+            gas_price=gas_price,
+            gas_limit=gas_limit,
+            input_public_key=VerifyKey(input_public_key),
+            contract_address=contract_address,
+            contract_args=contract_args,
+            amount=amount,
+            sign=sign,
+            raw=raw
+        )
